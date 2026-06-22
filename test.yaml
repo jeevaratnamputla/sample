@@ -1,0 +1,45 @@
+# WARNING: Do not deploy this manifest. It contains syntax errors and security vulnerabilities.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-nginx
+spec:
+  replicas: "two" # VULNERABILITY/ERROR: Should be an integer, not a string
+  selector:
+    matchLabels:
+      app: bad-nginx
+  template:
+    metadata:
+      labels:
+        app: bad-nginx
+    spec:
+        # INDENTATION ERROR: The spec body is double-indented (8 spaces instead of 6)
+        containers:
+        - name: nginx-container
+          image: nginx:latest # VULNERABILITY: Uses mutable 'latest' tag
+          ports:
+          - containerPort: 80
+          
+          securityContext:
+            privileged: true # CRITICAL VULNERABILITY: Gives container root access to host
+            runAsUser: 0 # VULNERABILITY: Explicitly runs as root user
+            allowPrivilegeEscalation: true # VULNERABILITY: Allows child processes to gain more privileges
+            
+          # RESOURCE VULNERABILITY: No resource requests or limits defined (risk of DoS)
+          
+          # SYNTAX ERROR: Broken inline array formatting
+          env:
+            - name: ENV_VAR
+            value: "test" # INDENTATION ERROR: 'value' must align with 'name'
+            
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: insecure-service
+spec:
+# SYNTAX ERROR: Missing 'selector' field to link the Service to the Deployment pods
+  ports:
+    - protocol: TCP
+      port: 80
+     targetPort: 80 # INDENTATION ERROR: Misaligned by 1 space
