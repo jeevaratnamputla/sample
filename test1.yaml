@@ -1,0 +1,57 @@
+# WARNING: Do not deploy this manifest in production. It contains deliberate security holes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulnerable-nginx
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: vuln-app
+  template:
+    metadata:
+      labels:
+        app: vuln-app
+    spec:
+      # 1. VULNERABILITY: Missing Pod-level securityContext (e.g., runAsNonRoot, seccompProfile)
+      containers:
+      - name: nginx
+        # 2. VULNERABILITY: Using the mutable 'latest' tag instead of a pinned version digest
+        image: nginx:latest 
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+        
+        securityContext:
+          # 3. CRITICAL VULNERABILITY: Gives the container full root access to the host kernel
+          privileged: true 
+          # 4. VULNERABILITY: Allows child processes to gain more privileges than their parent
+          allowPrivilegeEscalation: true 
+          # 5. VULNERABILITY: Container runs explicitly as the root user
+          runAsUser: 0 
+          # 6. VULNERABILITY: Root filesystem is writable, allowing malicious code injection
+          readOnlyRootFilesystem: false 
+          # 7. VULNERABILITY: Fails to drop dangerous default Linux kernel capabilities
+          capabilities:
+            add: ["NET_ADMIN", "SYS_ADMIN"] 
+
+        # 8. VULNERABILITY: Missing resource limits and requests (risks noisy-neighbor or DoS attacks)
+        # resources: {} 
+
+        # 9. VULNERABILITY: Mapping sensitive application keys directly in plaintext environment variables
+        env:
+        - name: DATABASE_PASSWORD
+          value: "SuperSecretAdminPassword123!" 
+
+        volumeMounts:
+        - name: host-root
+          mountPath: /mnt/host
+      
+      volumes:
+      # 10. CRITICAL VULNERABILITY: Mounts the entire host node file system inside the pod
+      - name: host-root
+        hostPath:
+          path: /
+          type: Directory
